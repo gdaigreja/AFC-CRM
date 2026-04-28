@@ -123,6 +123,7 @@ export default function App() {
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [kanbanFilterType, setKanbanFilterType] = useState<'todos' | 'Aposentadoria' | 'Planejamento'>('todos');
   const [view, setView] = useState<'kanban' | 'dashboard' | 'registrations' | 'documents' | 'settings' | 'tasks' | 'generator' | 'finance'>('kanban');
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [rolePermissions, setRolePermissions] = useState<Record<string, string[]>>({});
@@ -540,6 +541,11 @@ export default function App() {
         if (createdAt < start || createdAt > end) return false;
       }
 
+      // Kanban serviceType filtering
+      if (view === 'kanban' && kanbanFilterType !== 'todos') {
+        if (l.serviceType !== kanbanFilterType) return false;
+      }
+
       return matchesSearch;
     })
     .sort((a, b) => {
@@ -939,15 +945,35 @@ ON CONFLICT (id) DO NOTHING;
               <span className="font-display font-semibold text-sm text-licorice/80">{viewLabels[view] || view}</span>
             </div>
             {view === 'kanban' && (
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-licorice/30" size={14} />
-                <input
-                  type="text"
-                  placeholder="Buscar leads..."
-                  className="pl-9 pr-4 py-2 bg-white/50 border border-licorice/5 rounded-xl text-xs focus:outline-none focus:border-aventurine/50 w-64 shadow-sm"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+              <div className="flex items-center justify-between w-full">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-licorice/30" size={14} />
+                  <input
+                    type="text"
+                    placeholder="Buscar leads..."
+                    className="pl-9 pr-4 py-2 bg-white/50 border border-licorice/5 rounded-xl text-xs focus:outline-none focus:border-aventurine/50 w-64 shadow-sm"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex bg-white/50 p-0.5 rounded-lg border border-licorice/5">
+                    {(['todos', 'Aposentadoria', 'Planejamento'] as const).map((type) => (
+                      <button
+                        key={type}
+                        onClick={() => setKanbanFilterType(type)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-xl text-xs font-medium transition-all",
+                          kanbanFilterType === type ? "bg-[#512E2D] text-white shadow-sm" : "text-licorice/40 hover:text-licorice"
+                        )}
+                      >
+                        {type === 'todos' && 'Todos'}
+                        {type === 'Aposentadoria' && 'Aposentadoria'}
+                        {type === 'Planejamento' && 'Planejamento'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -1333,7 +1359,7 @@ ON CONFLICT (id) DO NOTHING;
           {view === 'kanban' && (
             <button
               onClick={addColumn}
-              className="bg-aventurine text-white px-5 py-2 rounded-xl text-xs font-medium shadow-sm hover:bg-aventurine/90 transition-all flex items-center gap-2"
+              className="ml-4 bg-[#512E2D] text-white px-5 py-2 rounded-xl text-xs font-medium shadow-sm hover:bg-[#3d2222] transition-all flex items-center gap-2"
             >
               <Plus size={14} />
               Nova Coluna
