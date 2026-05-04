@@ -108,7 +108,32 @@ export default function App() {
         }
 
         if (leadsRes.ok) {
-          const data = await leadsRes.json();
+          const rawData = await leadsRes.json();
+          const data = rawData.map((l: Lead) => {
+            if (l.status === 'Assinado') {
+              if (!l.documentData) {
+                return {
+                  ...l,
+                  documentData: {
+                    code: `C${Math.floor(Math.random() * 1000)}`,
+                    documents: DEFAULT_DOCUMENTS.map(d => ({ ...d })),
+                    observations: [],
+                    emailSent: false,
+                    notificationSent: false
+                  }
+                };
+              } else if (!l.documentData.documents || l.documentData.documents.length === 0) {
+                return {
+                  ...l,
+                  documentData: {
+                    ...l.documentData,
+                    documents: DEFAULT_DOCUMENTS.map(d => ({ ...d }))
+                  }
+                };
+              }
+            }
+            return l;
+          });
           setLeads(prevLeads => {
             const serverMap = new Map(data.map((l: Lead) => [l.id, l]));
 
@@ -317,14 +342,18 @@ export default function App() {
     removed.status = newStatus;
 
     // Initialize documentData if moved to 'Assinado'
-    if (removed.status === 'Assinado' && !removed.documentData) {
-      removed.documentData = {
-        code: `C${Math.floor(Math.random() * 1000)}`,
-        documents: [...DEFAULT_DOCUMENTS],
-        observations: [],
-        emailSent: false,
-        notificationSent: false
-      };
+    if (removed.status === 'Assinado') {
+      if (!removed.documentData) {
+        removed.documentData = {
+          code: `C${Math.floor(Math.random() * 1000)}`,
+          documents: DEFAULT_DOCUMENTS.map(d => ({ ...d })),
+          observations: [],
+          emailSent: false,
+          notificationSent: false
+        };
+      } else if (!removed.documentData.documents || removed.documentData.documents.length === 0) {
+        removed.documentData.documents = DEFAULT_DOCUMENTS.map(d => ({ ...d }));
+      }
     }
 
     // Insert at new index
@@ -355,14 +384,18 @@ export default function App() {
     // Keeping documentData even after status change
 
     // Initialize documentData if moved to 'Assinado'
-    if (updatedLead.status === 'Assinado' && !updatedLead.documentData) {
-      updatedLead.documentData = {
-        code: `C${Math.floor(Math.random() * 1000)}`,
-        documents: [...DEFAULT_DOCUMENTS],
-        observations: [],
-        emailSent: false,
-        notificationSent: false
-      };
+    if (updatedLead.status === 'Assinado') {
+      if (!updatedLead.documentData) {
+        updatedLead.documentData = {
+          code: `C${Math.floor(Math.random() * 1000)}`,
+          documents: DEFAULT_DOCUMENTS.map(d => ({ ...d })),
+          observations: [],
+          emailSent: false,
+          notificationSent: false
+        };
+      } else if (!updatedLead.documentData.documents || updatedLead.documentData.documents.length === 0) {
+        updatedLead.documentData.documents = DEFAULT_DOCUMENTS.map(d => ({ ...d }));
+      }
     }
 
     setLeads(prev => {
@@ -540,7 +573,7 @@ export default function App() {
       createdAt: new Date().toISOString(),
       documentData: status === 'Assinado' ? {
         code: `C${Math.floor(Math.random() * 1000)}`,
-        documents: [...DEFAULT_DOCUMENTS],
+        documents: DEFAULT_DOCUMENTS.map(d => ({ ...d })),
         observations: [],
         emailSent: false,
         notificationSent: false

@@ -192,7 +192,7 @@ export default function Documents({ leads, onUpdateLead, onDeleteLead, onEditLea
                   documentData: {
                     projeto,
                     code,
-                    documents: [...DEFAULT_DOCUMENTS],
+                    documents: DEFAULT_DOCUMENTS.map(d => ({ ...d })),
                     observations: [],
                     emailSent: false,
                     notificationSent: false,
