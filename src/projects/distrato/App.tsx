@@ -177,20 +177,17 @@ export default function App() {
         if (permissionsRes.ok) {
           const data = await permissionsRes.json();
           console.log("App.tsx: Raw permissions from API:", data);
+          const permsMap: Record<string, string[]> = {};
           data.forEach((p: any) => {
             if (p.permissions && Array.isArray(p.permissions.features)) {
               const enabledFeatures = p.permissions.features
-                .filter((f: any) => f.enabled)
+                .filter((f: any) => f.enabled === true || f.enabled === 'true')
                 .map((f: any) => f.id);
 
-              let roleId = (p.role_id || '').toLowerCase().trim();
-              if (roleId === 'administrador') roleId = 'admin';
-              if (roleId === 'visualizador') roleId = 'viewer';
-
+              const roleId = (p.role_id || '').toLowerCase().trim();
               permsMap[roleId] = enabledFeatures;
             }
           });
-          console.log("App.tsx: Mapped rolePermissions:", permsMap);
           setRolePermissions(permsMap);
         }
       } catch (e) {
@@ -260,45 +257,41 @@ export default function App() {
   const isFeatureEnabled = useCallback((featureId: string) => {
     if (!user) return false;
 
-    // Normalize role to match permission IDs
-    let role = user.role?.toLowerCase().trim();
-    if (role === 'administrador') role = 'admin';
-    if (role === 'visualizador') role = 'viewer';
-
-    // Admin always has access to everything
-    if (role === 'admin') return true;
-
-    // Map view IDs to feature IDs if necessary
+    // Normalize role and feature ID
+    const role = user.role?.toLowerCase().trim();
     const map: Record<string, string> = {
       'kanban': 'leads',
       'registrations': 'clients',
     };
-
     const id = map[featureId] || featureId;
+
+    // Admin always has access to everything
+    if (role === 'admin' || role === 'administrador') return true;
+
+    // Hardcoded fallback for viewer (if DB not loaded)
+    const isDbLoaded = rolePermissions && Object.keys(rolePermissions).length > 0;
+    if (!isDbLoaded && (role === 'viewer' || role === 'visualizador')) {
+      const viewerFeatures = ['leads', 'clients', 'dashboard'];
+      return viewerFeatures.includes(id);
+    }
 
     // Special case for settings view
     if (id === 'settings') {
-      if (rolePermissions[role]) {
+      if (isDbLoaded && rolePermissions[role]) {
         return rolePermissions[role].includes('access') || rolePermissions[role].includes('integrations');
       }
-      // Fallback if permissions not loaded
-      if (role === 'editor') return false; 
-      if (role === 'viewer') return false;
-      return false;
+      return false; // Settings is usually for admin only unless specified
     }
 
-    // If we have dynamic permissions, use them
-    if (rolePermissions[role]) {
+    // Role-based permissions from database (Priority)
+    if (isDbLoaded && rolePermissions[role]) {
       return rolePermissions[role].includes(id);
     }
 
-    // Fallback to hardcoded logic if permissions haven't loaded yet
-    if (role === 'editor') {
-      return ['leads', 'clients', 'tasks', 'documents', 'generator', 'dashboard', 'finance'].includes(id);
-    }
-
-    if (role === 'viewer') {
-      return ['leads', 'clients', 'dashboard'].includes(id);
+    // Secondary fallback for operator ONLY while DB is loading
+    if (!isDbLoaded && role === 'operador') {
+      const baseFeatures = ['leads', 'clients', 'dashboard', 'tasks', 'documents', 'generator'];
+      return baseFeatures.includes(id);
     }
 
     return false;
