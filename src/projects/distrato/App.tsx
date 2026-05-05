@@ -176,15 +176,13 @@ export default function App() {
         console.log("Permissions API Status:", permissionsRes.status);
         if (permissionsRes.ok) {
           const data = await permissionsRes.json();
-          const permsMap: Record<string, string[]> = {};
           data.forEach((p: any) => {
-            // p.permissions is the PermissionLevel object
             if (p.permissions && Array.isArray(p.permissions.features)) {
               const enabledFeatures = p.permissions.features
                 .filter((f: any) => f.enabled)
                 .map((f: any) => f.id);
 
-              let roleId = (p.role_id || '').toLowerCase();
+              let roleId = (p.role_id || '').toLowerCase().trim();
               if (roleId === 'administrador') roleId = 'admin';
               if (roleId === 'visualizador') roleId = 'viewer';
 
@@ -261,7 +259,7 @@ export default function App() {
     if (!user) return false;
 
     // Normalize role to match permission IDs
-    let role = user.role?.toLowerCase();
+    let role = user.role?.toLowerCase().trim();
     if (role === 'administrador') role = 'admin';
     if (role === 'visualizador') role = 'viewer';
 
@@ -282,7 +280,7 @@ export default function App() {
         return rolePermissions[role].includes('access') || rolePermissions[role].includes('integrations');
       }
       // Fallback if permissions not loaded
-      if (role === 'editor') return false; // Editor by default doesn't see settings
+      if (role === 'editor') return false; 
       if (role === 'viewer') return false;
       return false;
     }

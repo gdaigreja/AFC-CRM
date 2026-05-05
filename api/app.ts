@@ -44,8 +44,8 @@ const getTable = (project: string | undefined, baseName: string) => {
   // Normalize project to lowercase and handle defaults
   const p = (project || 'distrato').toLowerCase();
   
-  // SHARED TABLES: Users and Roles are now shared across all projects
-  if (baseName === 'users' || baseName === 'roles_permissions') {
+  // SHARED TABLES: Users are shared, but roles are project-specific
+  if (baseName === 'users') {
     return baseName;
   }
 
@@ -716,10 +716,15 @@ app.get(["/api/roles/permissions", "/roles/permissions"], authenticateToken, asy
 
 app.post(["/api/roles/permissions", "/roles/permissions"], authenticateToken, async (req: any, res) => {
   const { role_id, permissions } = req.body;
+  const normalizedRoleId = (role_id || "").toLowerCase().trim();
+  
   try {
     const { data, error } = await supabase
       .from(getTable(req.user.project, 'roles_permissions'))
-      .upsert({ role_id, permissions })
+      .upsert(
+        { role_id: normalizedRoleId, permissions },
+        { onConflict: 'role_id' }
+      )
       .select();
     
     if (error) throw error;

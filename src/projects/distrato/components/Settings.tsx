@@ -162,10 +162,31 @@ export default function Settings({ onLogout, user, isFeatureEnabled, onUpdateUse
       if (response.ok) {
         const data = await response.json();
         if (data && data.length > 0) {
-          // Map the data back to PermissionLevel[]
-          // We assume the data is stored as { role_id, permissions: PermissionLevel }
-          const perms = data.map((p: any) => p.permissions);
-          setPermissions(perms);
+          const permsFromDb = data.map((p: any) => p.permissions);
+          
+          setPermissions(prev => {
+            // Start with defaults
+            const newPerms = [...INITIAL_PERMISSIONS];
+            
+            // Override with those from DB
+            permsFromDb.forEach((dbPerm: any) => {
+              const index = newPerms.findIndex(p => p.id === dbPerm.id);
+              if (index > -1) {
+                // Merge features to ensure new features added to INITIAL_PERMISSIONS are preserved
+                // but kept as disabled if not in DB
+                const mergedFeatures = dbPerm.features || [];
+                newPerms[index] = {
+                  ...newPerms[index],
+                  ...dbPerm,
+                  features: dbPerm.features
+                };
+              } else {
+                newPerms.push(dbPerm);
+              }
+            });
+            
+            return newPerms;
+          });
         }
       }
     } catch (e) {
@@ -190,9 +211,14 @@ export default function Settings({ onLogout, user, isFeatureEnabled, onUpdateUse
       if (response.ok) {
         // Refresh local state
         setPermissions(prev => prev.map(p => p.id === perm.id ? perm : p));
+        alert("Permissões salvas com sucesso!");
+      } else {
+        const error = await response.json();
+        alert(error.error || "Erro ao salvar permissões");
       }
     } catch (e) {
       console.error("Error saving permission", e);
+      alert("Erro de conexão ao salvar permissões");
     }
   };
 
