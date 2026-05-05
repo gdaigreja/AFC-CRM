@@ -25,7 +25,7 @@ interface PermissionLevel {
 
 const INITIAL_PERMISSIONS: PermissionLevel[] = [
   { 
-    id: 'admin',
+    id: 'administrador',
     title: 'Administrador', 
     desc: 'Acesso total a todas as funções e configurações.', 
     color: 'bg-aventurine',
@@ -59,7 +59,7 @@ const INITIAL_PERMISSIONS: PermissionLevel[] = [
     ]
   },
   { 
-    id: 'viewer',
+    id: 'visualizador',
     title: 'Visualizador', 
     desc: 'Acesso apenas para leitura de dados e relatórios.', 
     color: 'bg-licorice/20',
@@ -67,14 +67,14 @@ const INITIAL_PERMISSIONS: PermissionLevel[] = [
       { id: 'leads', label: 'Leads', enabled: true },
       { id: 'clients', label: 'Clientes', enabled: true },
       { id: 'documents', label: 'Documentos', enabled: false },
-      { id: 'tasks', label: 'Afazeres', enabled: false },
+      { id: 'tasks', label: 'Tarefas', enabled: false },
       { id: 'generator', label: 'Gerador', enabled: false },
       { id: 'dashboard', label: 'Dashboard', enabled: true },
       { id: 'access', label: 'Acessos', enabled: false },
       { id: 'integrations', label: 'Integrações', enabled: false },
       { id: 'finance', label: 'Financeiro', enabled: false },
     ]
-  },
+  }
 ];
 
 export default function Settings({ onLogout, user, isFeatureEnabled, onUpdateUser }: { 
@@ -161,32 +161,19 @@ export default function Settings({ onLogout, user, isFeatureEnabled, onUpdateUse
       });
       if (response.ok) {
         const data = await response.json();
+        console.log("Settings: Fetched permissions from DB:", data);
+        
         if (data && data.length > 0) {
+          // The database is the source of truth
           const permsFromDb = data.map((p: any) => p.permissions);
+          setPermissions(permsFromDb);
+        } else {
+          // If DB is empty, use defaults and save them to DB for consistency
+          console.log("Settings: DB is empty, using INITIAL_PERMISSIONS");
+          setPermissions(INITIAL_PERMISSIONS);
           
-          setPermissions(prev => {
-            // Start with defaults
-            const newPerms = [...INITIAL_PERMISSIONS];
-            
-            // Override with those from DB
-            permsFromDb.forEach((dbPerm: any) => {
-              const index = newPerms.findIndex(p => p.id === dbPerm.id);
-              if (index > -1) {
-                // Merge features to ensure new features added to INITIAL_PERMISSIONS are preserved
-                // but kept as disabled if not in DB
-                const mergedFeatures = dbPerm.features || [];
-                newPerms[index] = {
-                  ...newPerms[index],
-                  ...dbPerm,
-                  features: dbPerm.features
-                };
-              } else {
-                newPerms.push(dbPerm);
-              }
-            });
-            
-            return newPerms;
-          });
+          // Optional: Auto-save defaults to DB
+          INITIAL_PERMISSIONS.forEach(p => savePermission(p));
         }
       }
     } catch (e) {
@@ -372,13 +359,14 @@ export default function Settings({ onLogout, user, isFeatureEnabled, onUpdateUse
   const handleCreateLevel = async () => {
     if (!newLevel.title) return;
     
-    const levelId = newLevel.title.toLowerCase().replace(/\s+/g, '_');
+    const levelId = newLevel.title.toLowerCase().trim().replace(/\s+/g, '_');
+    
     const newPerm: PermissionLevel = {
       id: levelId,
       title: newLevel.title,
-      desc: newLevel.desc,
-      color: newLevel.color,
-      features: INITIAL_PERMISSIONS[0].features.map(f => ({ ...f, enabled: false }))
+      desc: newLevel.desc || `Nível ${newLevel.title}`,
+      color: newLevel.color || 'bg-aventurine',
+      features: INITIAL_PERMISSIONS[1].features.map(f => ({ ...f, enabled: false }))
     };
 
     try {
@@ -394,13 +382,18 @@ export default function Settings({ onLogout, user, isFeatureEnabled, onUpdateUse
           permissions: newPerm
         })
       });
+
       if (response.ok) {
         setPermissions(prev => [...prev, newPerm]);
         setIsNewLevelModalOpen(false);
         setNewLevel({ title: '', desc: '', color: 'bg-aventurine' });
+        alert(`Nível "${newLevel.title}" criado e salvo com sucesso!`);
+      } else {
+        alert("Erro ao salvar o novo nível no banco de dados.");
       }
     } catch (e) {
       console.error("Error creating level", e);
+      alert("Erro de conexão ao criar nível.");
     }
   };
   const handleRoleChange = async (userId: string, newRole: string) => {

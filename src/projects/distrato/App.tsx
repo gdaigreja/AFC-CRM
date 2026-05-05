@@ -176,6 +176,7 @@ export default function App() {
         console.log("Permissions API Status:", permissionsRes.status);
         if (permissionsRes.ok) {
           const data = await permissionsRes.json();
+          console.log("App.tsx: Raw permissions from API:", data);
           data.forEach((p: any) => {
             if (p.permissions && Array.isArray(p.permissions.features)) {
               const enabledFeatures = p.permissions.features
@@ -189,6 +190,7 @@ export default function App() {
               permsMap[roleId] = enabledFeatures;
             }
           });
+          console.log("App.tsx: Mapped rolePermissions:", permsMap);
           setRolePermissions(permsMap);
         }
       } catch (e) {
